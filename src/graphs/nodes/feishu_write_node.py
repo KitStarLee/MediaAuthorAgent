@@ -14,22 +14,61 @@ from graphs.state import FeishuWriteInput, FeishuWriteOutput
 class FeishuBitable:
     """
     飞书多维表格（Bitable）HTTP 客户端。
+    支持两种认证方式：
+    1. 平台托管集成：通过 coze_workload_identity 获取 token
+    2. 自定义认证：使用用户提供的 app_id 和 app_secret 获取 token
     所有方法返回值均为 Feishu OpenAPI 标准响应："{\"code\": int, \"msg\": str, \"data\": any}"
     基础 URL 默认 "https://open.larkoffice.com/open-apis"。
     """
-    def __init__(self, base_url: str = "https://open.larkoffice.com/open-apis", timeout: int = 30):
+    def __init__(
+        self, 
+        base_url: str = "https://open.larkoffice.com/open-apis", 
+        timeout: int = 30,
+        app_id: str | None = None,
+        app_secret: str | None = None
+    ):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.app_id = app_id
+        self.app_secret = app_secret
         self.access_token = self._get_access_token()
 
-    @staticmethod
-    def _get_access_token() -> str:
+    def _get_access_token(self) -> str:
         """
         获取飞书多维表格（Bitable）的租户访问令牌。
+        优先使用用户提供的 app_id 和 app_secret，如果没有则使用平台托管集成。
         """
+        # 如果用户提供了 app_id 和 app_secret，使用自定义认证
+        if self.app_id and self.app_secret:
+            return self._get_tenant_access_token(self.app_id, self.app_secret)
+        
+        # 否则使用平台托管集成
         client = Client()
         access_token = client.get_integration_credential("integration-feishu-base")
         return access_token
+
+    @staticmethod
+    def _get_tenant_access_token(app_id: str, app_secret: str) -> str:
+        """
+        使用 app_id 和 app_secret 获取飞书租户访问令牌
+        文档：https://open.larkoffice.com/document/server-docs/authentication/obtain-tenant-access-token
+        """
+        url = "https://open.larkoffice.com/open-apis/auth/v3/tenant_access_token/internal"
+        payload = {
+            "app_id": app_id,
+            "app_secret": app_secret
+        }
+        
+        try:
+            response = requests.post(url, json=payload, timeout=30)
+            result = response.json()
+            
+            if result.get("code") != 0:
+                raise Exception(f"获取飞书 tenant_access_token 失败: {result}")
+            
+            return result.get("tenant_access_token", "")
+        except Exception as e:
+            raise Exception(f"获取飞书认证token失败: {str(e)}")
 
     def _headers(self) -> dict:
         return {
@@ -75,13 +114,16 @@ class FeishuBitable:
 def feishu_write_node(state: FeishuWriteInput, config: RunnableConfig, runtime: Runtime[Context]) -> FeishuWriteOutput:
     """
     title: 飞书表格写入
-    desc: 将生成的内容草稿自动写入指定的飞书多维表格A，表结构包含：编码、账户名、标题、描述、话题、文件、发布时间、发布状态、创建时间、数据表现
+    desc: 将生成的内容草稿自动写入指定的飞书多维表格A，表结构包含：编码、账户名、标题、描述、话题、文件、发布时间、发布状态、创建时间、数据表现。支持使用自己的APP_ID和APP_SECRET认证
     integrations: 飞书多维表格
     """
     ctx = runtime.context
     
-    # 初始化飞书客户端
-    feishu_client = FeishuBitable()
+    # 初始化飞书客户端，支持自定义认证
+    feishu_client = FeishuBitable(
+        app_id=state.feishu_app_id,
+        app_secret=state.feishu_app_secret
+    )
     
     # 生成当前时间
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
