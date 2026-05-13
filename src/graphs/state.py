@@ -10,6 +10,8 @@ class GlobalState(BaseModel):
     table_id_a: str = Field(..., description="飞书多维表格A的table_id（用于存储生成内容）")
     app_token_b: str = Field(..., description="飞书多维表格B的app_token（用于读取历史数据）")
     table_id_b: str = Field(..., description="飞书多维表格B的table_id（用于读取历史数据）")
+    feishu_app_id: Optional[str] = Field(default=None, description="飞书应用ID（可选，用于自定义认证）")
+    feishu_app_secret: Optional[str] = Field(default=None, description="飞书应用密钥（可选，用于自定义认证）")
     enable_analysis: bool = Field(default=True, description="是否启用数据分析和优化")
     account_name: Optional[str] = Field(default="", description="账户名")
     
@@ -29,6 +31,8 @@ class GraphInput(BaseModel):
     table_id_a: str = Field(..., description="飞书多维表格A的table_id（用于存储生成内容）")
     app_token_b: str = Field(..., description="飞书多维表格B的app_token（用于读取历史数据）")
     table_id_b: str = Field(..., description="飞书多维表格B的table_id（用于读取历史数据）")
+    feishu_app_id: Optional[str] = Field(default=None, description="飞书应用ID（可选，用于自定义认证）")
+    feishu_app_secret: Optional[str] = Field(default=None, description="飞书应用密钥（可选，用于自定义认证）")
     enable_analysis: bool = Field(default=True, description="是否启用数据分析和优化，默认true")
     account_name: Optional[str] = Field(default="", description="账户名（可选）")
 
@@ -89,6 +93,8 @@ class FeishuWriteInput(BaseModel):
     """飞书表格写入节点输入 - 表A结构：编码、账户名、标题、描述、话题、文件、发布时间、发布状态、创建时间、数据表现"""
     app_token_a: str = Field(..., description="飞书多维表格A的app_token")
     table_id_a: str = Field(..., description="飞书多维表格A的table_id")
+    feishu_app_id: Optional[str] = Field(default=None, description="飞书应用ID（可选，用于自定义认证）")
+    feishu_app_secret: Optional[str] = Field(default=None, description="飞书应用密钥（可选，用于自定义认证）")
     contents: List[Dict[str, str]] = Field(..., description="要写入的内容列表")
     selected_topic: str = Field(..., description="选定的选题")
     account_name: Optional[str] = Field(default="", description="账户名")
@@ -104,6 +110,8 @@ class FeishuReadInput(BaseModel):
     """历史数据读取节点输入 - 表B结构：标识、平台、内容ID、点赞、收藏、评论、分享"""
     app_token_b: str = Field(..., description="飞书多维表格B的app_token")
     table_id_b: str = Field(..., description="飞书多维表格B的table_id")
+    feishu_app_id: Optional[str] = Field(default=None, description="飞书应用ID（可选，用于自定义认证）")
+    feishu_app_secret: Optional[str] = Field(default=None, description="飞书应用密钥（可选，用于自定义认证）")
 
 
 class FeishuReadOutput(BaseModel):
