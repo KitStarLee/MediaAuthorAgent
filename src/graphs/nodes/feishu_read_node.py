@@ -61,7 +61,7 @@ class FeishuBitable:
         user_id_type: str | None = None,
     ) -> dict:
         """
-        条件查询记录
+        条件查询记录 - 适配表B结构：标识、平台、内容ID、点赞、收藏、评论、分享
         """
         params: dict = {}
         if user_id_type is not None:
@@ -85,7 +85,7 @@ class FeishuBitable:
 def feishu_read_node(state: FeishuReadInput, config: RunnableConfig, runtime: Runtime[Context]) -> FeishuReadOutput:
     """
     title: 历史数据读取
-    desc: 从飞书多维表格B中读取已发布内容的历史数据表现
+    desc: 从飞书多维表格B中读取已发布内容的历史数据表现，表结构包含：标识、平台、内容ID、点赞、收藏、评论、分享
     integrations: 飞书多维表格
     """
     ctx = runtime.context
@@ -95,19 +95,30 @@ def feishu_read_node(state: FeishuReadInput, config: RunnableConfig, runtime: Ru
     
     historical_data = []
     try:
+        # 指定需要读取的字段 - 表B结构
+        field_names = ["标识", "平台", "内容ID", "点赞", "收藏", "评论", "分享"]
+        
         # 调用飞书API读取记录
         response = feishu_client.search_record(
             app_token=state.app_token_b,
             table_id=state.table_id_b,
+            field_names=field_names,
             page_size=100  # 最多读取100条记录
         )
         
-        # 提取记录数据
+        # 提取记录数据并格式化
         items = response.get("data", {}).get("items", [])
         for item in items:
+            fields = item.get("fields", {})
             record_data = {
                 "record_id": item.get("record_id", ""),
-                "fields": item.get("fields", {}),
+                "标识": fields.get("标识", ""),
+                "平台": fields.get("平台", ""),
+                "内容ID": fields.get("内容ID", ""),
+                "点赞": fields.get("点赞", 0),
+                "收藏": fields.get("收藏", 0),
+                "评论": fields.get("评论", 0),
+                "分享": fields.get("分享", 0),
                 "last_modified_time": item.get("last_modified_time", "")
             }
             historical_data.append(record_data)

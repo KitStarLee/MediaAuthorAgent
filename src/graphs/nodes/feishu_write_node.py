@@ -75,7 +75,7 @@ class FeishuBitable:
 def feishu_write_node(state: FeishuWriteInput, config: RunnableConfig, runtime: Runtime[Context]) -> FeishuWriteOutput:
     """
     title: 飞书表格写入
-    desc: 将生成的内容草稿自动写入指定的飞书多维表格A
+    desc: 将生成的内容草稿自动写入指定的飞书多维表格A，表结构包含：编码、账户名、标题、描述、话题、文件、发布时间、发布状态、创建时间、数据表现
     integrations: 飞书多维表格
     """
     ctx = runtime.context
@@ -86,15 +86,21 @@ def feishu_write_node(state: FeishuWriteInput, config: RunnableConfig, runtime: 
     # 生成当前时间
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    # 准备要写入的记录
+    # 准备要写入的记录 - 适配表A结构
     records = []
-    for content_item in state.contents:
+    for idx, content_item in enumerate(state.contents):
+        title = content_item.get("title", f"内容{idx + 1}")
+        content = content_item.get("content", "")
+        
+        # 表A字段：编码、账户名、标题、描述、话题、文件、发布时间、发布状态、创建时间、数据表现
         record = {
             "fields": {
-                "标题": content_item.get("title", ""),
-                "正文": content_item.get("content", ""),
-                "对应选题": state.selected_topic,
-                "生成时间": current_time
+                "账户名": state.account_name or "",
+                "标题": title,
+                "描述": content[:1000] if len(content) > 1000 else content,  # 限制描述长度
+                "话题": state.selected_topic,
+                "发布状态": "草稿",
+                "创建时间": current_time
             }
         }
         records.append(record)
@@ -109,14 +115,16 @@ def feishu_write_node(state: FeishuWriteInput, config: RunnableConfig, runtime: 
         )
         write_result = {
             "success": True,
-            "message": "内容成功写入飞书表格",
-            "data": response.get("data", {})
+            "message": f"成功写入{len(records)}条内容到飞书表格",
+            "data": response.get("data", {}),
+            "records_written": len(records)
         }
     except Exception as e:
         write_result = {
             "success": False,
             "message": f"写入飞书表格失败: {str(e)}",
-            "error": str(e)
+            "error": str(e),
+            "records_attempted": len(records)
         }
     
     return FeishuWriteOutput(write_result=write_result)
