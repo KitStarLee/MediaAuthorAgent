@@ -14,6 +14,11 @@
 
 **类型说明**: task(task节点) / agent(大模型) / condition(条件分支) / looparray(列表循环) / loopcond(条件循环)
 
+## 工具模块
+| 模块名 | 文件位置 | 功能描述 |
+|-------|---------|---------|
+| feishu_bitable_tool | `src/tools/feishu_bitable_tool.py` | 共享的飞书多维表格操作工具，支持token缓存复用 |
+
 ## 子图清单
 | 子图名 | 文件位置 | 功能描述 | 被调用节点 |
 |-------|---------|------|---------|-----------|
@@ -26,9 +31,15 @@
 ## API调用说明
 工作流支持以下参数作为API输入：
 - `core_topic`: 核心主题词（必填）
-- `app_token_a`: 飞书表格A的app_token（必填）
-- `table_id_a`: 飞书表格A的table_id（必填）
-- `app_token_b`: 飞书表格B的app_token（必填）
-- `table_id_b`: 飞书表格B的table_id（必填）
+- `app_token`: 飞书多维表格的app_token（必填，两个表格共用）
+- `table_id_a`: 飞书表格A的table_id（必填，存储生成内容）
+- `table_id_b`: 飞书表格B的table_id（必填，读取历史数据）
+- `feishu_app_id`: 飞书应用ID（可选，用于自定义认证）
+- `feishu_app_secret`: 飞书应用密钥（可选，用于自定义认证）
 - `enable_analysis`: 是否启用数据分析（可选，默认true）
 - `account_name`: 账户名（可选）
+
+## 优化亮点
+1. **参数精简**：合并app_token_a和app_token_b为单一app_token
+2. **连接复用**：通过`src/tools/feishu_bitable_tool.py`共享飞书客户端，避免重复获取token
+3. **Token缓存**：支持在全局状态中缓存access_token，提高效率

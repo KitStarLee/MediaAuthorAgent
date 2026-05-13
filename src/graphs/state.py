@@ -6,9 +6,8 @@ from pydantic import BaseModel, Field
 class GlobalState(BaseModel):
     """全局状态定义 - 包含整个工作流的所有数据"""
     core_topic: str = Field(..., description="用户提供的核心主题词")
-    app_token_a: str = Field(..., description="飞书多维表格A的app_token（用于存储生成内容）")
+    app_token: str = Field(..., description="飞书多维表格的app_token")
     table_id_a: str = Field(..., description="飞书多维表格A的table_id（用于存储生成内容）")
-    app_token_b: str = Field(..., description="飞书多维表格B的app_token（用于读取历史数据）")
     table_id_b: str = Field(..., description="飞书多维表格B的table_id（用于读取历史数据）")
     feishu_app_id: Optional[str] = Field(default=None, description="飞书应用ID（可选，用于自定义认证）")
     feishu_app_secret: Optional[str] = Field(default=None, description="飞书应用密钥（可选，用于自定义认证）")
@@ -21,15 +20,15 @@ class GlobalState(BaseModel):
     historical_data: List[Dict[str, Any]] = Field(default=[], description="从飞书表格B读取的历史数据")
     optimization_strategy: Dict[str, Any] = Field(default={}, description="数据分析后的优化策略")
     write_result: Dict[str, Any] = Field(default={}, description="飞书表格写入结果")
+    feishu_access_token: Optional[str] = Field(default=None, description="飞书访问令牌（缓存）")
 
 
 # ==================== 工作流输入输出 ====================
 class GraphInput(BaseModel):
     """工作流输入"""
     core_topic: str = Field(..., description="用户提供的核心主题词（约10个字）")
-    app_token_a: str = Field(..., description="飞书多维表格A的app_token（用于存储生成内容）")
+    app_token: str = Field(..., description="飞书多维表格的app_token")
     table_id_a: str = Field(..., description="飞书多维表格A的table_id（用于存储生成内容）")
-    app_token_b: str = Field(..., description="飞书多维表格B的app_token（用于读取历史数据）")
     table_id_b: str = Field(..., description="飞书多维表格B的table_id（用于读取历史数据）")
     feishu_app_id: Optional[str] = Field(default=None, description="飞书应用ID（可选，用于自定义认证）")
     feishu_app_secret: Optional[str] = Field(default=None, description="飞书应用密钥（可选，用于自定义认证）")
@@ -91,10 +90,11 @@ class ContentGenerationOutput(BaseModel):
 # 飞书表格写入节点 - 适配表A结构
 class FeishuWriteInput(BaseModel):
     """飞书表格写入节点输入 - 表A结构：编码、账户名、标题、描述、话题、文件、发布时间、发布状态、创建时间、数据表现"""
-    app_token_a: str = Field(..., description="飞书多维表格A的app_token")
+    app_token: str = Field(..., description="飞书多维表格的app_token")
     table_id_a: str = Field(..., description="飞书多维表格A的table_id")
     feishu_app_id: Optional[str] = Field(default=None, description="飞书应用ID（可选，用于自定义认证）")
     feishu_app_secret: Optional[str] = Field(default=None, description="飞书应用密钥（可选，用于自定义认证）")
+    feishu_access_token: Optional[str] = Field(default=None, description="飞书访问令牌（缓存）")
     contents: List[Dict[str, str]] = Field(..., description="要写入的内容列表")
     selected_topic: str = Field(..., description="选定的选题")
     account_name: Optional[str] = Field(default="", description="账户名")
@@ -103,20 +103,23 @@ class FeishuWriteInput(BaseModel):
 class FeishuWriteOutput(BaseModel):
     """飞书表格写入节点输出"""
     write_result: Dict[str, Any] = Field(..., description="写入结果")
+    feishu_access_token: Optional[str] = Field(default=None, description="飞书访问令牌（缓存）")
 
 
 # 历史数据读取节点 - 适配表B结构
 class FeishuReadInput(BaseModel):
     """历史数据读取节点输入 - 表B结构：标识、平台、内容ID、点赞、收藏、评论、分享"""
-    app_token_b: str = Field(..., description="飞书多维表格B的app_token")
+    app_token: str = Field(..., description="飞书多维表格的app_token")
     table_id_b: str = Field(..., description="飞书多维表格B的table_id")
     feishu_app_id: Optional[str] = Field(default=None, description="飞书应用ID（可选，用于自定义认证）")
     feishu_app_secret: Optional[str] = Field(default=None, description="飞书应用密钥（可选，用于自定义认证）")
+    feishu_access_token: Optional[str] = Field(default=None, description="飞书访问令牌（缓存）")
 
 
 class FeishuReadOutput(BaseModel):
     """历史数据读取节点输出"""
     historical_data: List[Dict[str, Any]] = Field(..., description="读取到的历史数据")
+    feishu_access_token: Optional[str] = Field(default=None, description="飞书访问令牌（缓存）")
 
 
 # 数据分析与策略优化节点

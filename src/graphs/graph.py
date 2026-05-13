@@ -1,9 +1,15 @@
+"""
+自媒体内容生产系统主图编排
+"""
 from langgraph.graph import StateGraph, END
+from langchain_core.runnables import RunnableConfig
+from langgraph.runtime import Runtime
 
 from graphs.state import (
     GlobalState,
     GraphInput,
-    GraphOutput
+    GraphOutput,
+    ShouldAnalyzeInput
 )
 
 from graphs.nodes.topic_generation_node import topic_generation_node
@@ -13,25 +19,22 @@ from graphs.nodes.feishu_read_node import feishu_read_node
 from graphs.nodes.analysis_optimization_node import analysis_optimization_node
 
 
-# 条件判断函数 - 用于条件边
-def should_analyze(state: GlobalState) -> str:
+def should_analyze_data(state: ShouldAnalyzeInput) -> str:
     """
-    title: 是否需要分析
-    desc: 根据enable_analysis参数和historical_data是否为空，判断是否需要进行数据分析和优化
+    条件判断函数：根据参数和数据决定是否进行分析
+    返回值是中文分支名，用于 path_map 匹配
     """
-    # 如果enable_analysis为False，直接跳过分析
     if not state.enable_analysis:
         return "跳过分析"
     
-    # 如果enable_analysis为True，但历史数据为空，也跳过分析
+    # 检查历史数据是否为空
     if not state.historical_data or len(state.historical_data) == 0:
         return "跳过分析"
     
-    # 否则进行分析
     return "进行分析"
 
 
-# 创建状态图
+# 创建状态图 - 指定输入和输出 schema
 builder = StateGraph(GlobalState, input_schema=GraphInput, output_schema=GraphOutput)
 
 # 添加节点
@@ -41,17 +44,17 @@ builder.add_node(
 )
 builder.add_node(
     "analysis_optimization", 
-    analysis_optimization_node,
+    analysis_optimization_node, 
     metadata={"type": "agent", "llm_cfg": "config/analysis_optimization_llm_cfg.json"}
 )
 builder.add_node(
     "topic_generation", 
-    topic_generation_node,
+    topic_generation_node, 
     metadata={"type": "agent", "llm_cfg": "config/topic_generation_llm_cfg.json"}
 )
 builder.add_node(
     "content_generation", 
-    content_generation_node,
+    content_generation_node, 
     metadata={"type": "agent", "llm_cfg": "config/content_generation_llm_cfg.json"}
 )
 builder.add_node(
@@ -59,23 +62,23 @@ builder.add_node(
     feishu_write_node
 )
 
-# 设置入口点 - 先读取历史数据
+# 设置入口点
 builder.set_entry_point("feishu_read")
 
-# 添加条件分支
+# 添加条件分支：从读取数据后决定是否进行分析
 builder.add_conditional_edges(
     source="feishu_read",
-    path=should_analyze,
+    path=should_analyze_data,
     path_map={
         "进行分析": "analysis_optimization",
         "跳过分析": "topic_generation"
     }
 )
 
-# 分析完成后到选题生成
+# 添加边：分析完成后到选题生成
 builder.add_edge("analysis_optimization", "topic_generation")
 
-# 后续流程
+# 添加后续边
 builder.add_edge("topic_generation", "content_generation")
 builder.add_edge("content_generation", "feishu_write")
 builder.add_edge("feishu_write", END)
