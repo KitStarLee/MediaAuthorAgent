@@ -13,7 +13,7 @@ from graphs.state import TopicGenerationInput, TopicGenerationOutput
 def topic_generation_node(state: TopicGenerationInput, config: RunnableConfig, runtime: Runtime[Context]) -> TopicGenerationOutput:
     """
     title: 选题生成
-    desc: 根据核心主题词生成3-5个具备强吸引力、高点击潜力的选题方向，网感强、自带流量属性
+    desc: 根据用户需求严格生成指定数量的选题，网感强、自带流量属性
     integrations: 大语言模型
     """
     ctx = runtime.context
@@ -30,7 +30,9 @@ def topic_generation_node(state: TopicGenerationInput, config: RunnableConfig, r
     # 使用jinja2模板渲染提示词
     up_tpl = Template(up)
     user_prompt_content = up_tpl.render({
-        "core_topic": state.core_topic,
+        "user_demand": state.user_demand,
+        "background": state.background,
+        "content_count": state.content_count,
         "historical_data": state.historical_data,
         "optimization_strategy": state.optimization_strategy
     })
@@ -93,16 +95,20 @@ def topic_generation_node(state: TopicGenerationInput, config: RunnableConfig, r
         if not topics:
             lines = [line.strip() for line in content_text.split('\n') if line.strip()]
             # 过滤掉空行和非选题行
-            topics = [line for line in lines if len(line) > 5][:5]
+            topics = [line for line in lines if len(line) > 5]
     
-    # 确保至少有3个选题
-    if len(topics) < 3:
-        # 补充默认选题
-        default_topics = [
-            f"{state.core_topic}：你不知道的3个秘密",
-            f"{state.core_topic}：从入门到精通的完整指南",
-            f"{state.core_topic}：为什么别人都在谈论这个？"
-        ]
-        topics = (topics + default_topics)[:5]
+    # 严格确保选题数量等于content_count
+    if len(topics) == 0:
+        # 如果没有生成任何选题，生成默认选题
+        for i in range(state.content_count):
+            topics.append(f"{state.user_demand[:10]}相关选题第{i+1}个")
+    elif len(topics) < state.content_count:
+        # 如果生成的选题不够，复制已有选题或生成补充
+        original_len = len(topics)
+        for i in range(state.content_count - original_len):
+            topics.append(f"{topics[i % original_len]}（变种{i+1}）")
+    elif len(topics) > state.content_count:
+        # 如果生成的选题太多，只取前content_count个
+        topics = topics[:state.content_count]
     
     return TopicGenerationOutput(topics=topics)

@@ -40,9 +40,11 @@ def content_generation_node(state: ContentGenerationInput, config: RunnableConfi
     # 使用jinja2模板渲染提示词
     up_tpl = Template(up)
     user_prompt_content = up_tpl.render({
+        "user_demand": state.user_demand,
+        "background": state.background,
         "topics": selected_topics,
         "content_count": state.content_count,
-        "historical_data": state.historical_data if hasattr(state, 'historical_data') else None,
+        "historical_data": state.historical_data,
         "optimization_strategy": state.optimization_strategy
     })
     
@@ -106,11 +108,11 @@ def content_generation_node(state: ContentGenerationInput, config: RunnableConfi
         if not contents:
             # 将整个响应作为一篇内容
             for i in range(state.content_count):
-                topic = selected_topics[i] if i < len(selected_topics) else f"{state.core_topic} - {i + 1}"
+                topic = selected_topics[i] if i < len(selected_topics) else f"{state.user_demand[:10]} - {i + 1}"
                 contents.append({
                     "title": topic,
                     "content": content_text if i == 0 else f"这是关于 {topic} 的内容...",
-                    "topics": [f"#{state.core_topic.replace(' ', '')}", "#内容创作"]
+                    "topics": [f"#{state.user_demand[:10].replace(' ', '')}", "#内容创作"]
                 })
     
     # 确保contents的格式正确，包含title, content, topics
@@ -120,14 +122,14 @@ def content_generation_node(state: ContentGenerationInput, config: RunnableConfi
             break
             
         if isinstance(item, str):
-            topic = selected_topics[idx] if idx < len(selected_topics) else f"{state.core_topic} - {idx + 1}"
+            topic = selected_topics[idx] if idx < len(selected_topics) else f"{state.user_demand[:10]} - {idx + 1}"
             formatted_contents.append({
                 "title": topic,
                 "content": item,
-                "topics": [f"#{state.core_topic.replace(' ', '')}", "#内容创作"]
+                "topics": [f"#{state.user_demand[:10].replace(' ', '')}", "#内容创作"]
             })
         elif isinstance(item, dict):
-            title = item.get("title", selected_topics[idx] if idx < len(selected_topics) else f"{state.core_topic} - {idx + 1}")
+            title = item.get("title", selected_topics[idx] if idx < len(selected_topics) else f"{state.user_demand[:10]} - {idx + 1}")
             content = item.get("content", "") or item.get("text", "")
             topics = item.get("topics", []) or item.get("tags", [])
             
@@ -141,7 +143,7 @@ def content_generation_node(state: ContentGenerationInput, config: RunnableConfi
             
             # 如果没有话题，添加默认话题
             if not formatted_topics:
-                formatted_topics = [f"#{state.core_topic.replace(' ', '')}", "#内容创作"]
+                formatted_topics = [f"#{state.user_demand[:10].replace(' ', '')}", "#内容创作"]
             
             formatted_contents.append({
                 "title": title,
@@ -152,11 +154,11 @@ def content_generation_node(state: ContentGenerationInput, config: RunnableConfi
     # 确保生成指定数量的内容
     while len(formatted_contents) < state.content_count:
         idx = len(formatted_contents)
-        topic = selected_topics[idx] if idx < len(selected_topics) else f"{state.core_topic} - {idx + 1}"
+        topic = selected_topics[idx] if idx < len(selected_topics) else f"{state.user_demand[:10]} - {idx + 1}"
         formatted_contents.append({
             "title": topic,
             "content": f"这是关于 {topic} 的内容...",
-            "topics": [f"#{state.core_topic.replace(' ', '')}", "#内容创作"]
+            "topics": [f"#{state.user_demand[:10].replace(' ', '')}", "#内容创作"]
         })
     
     logger.info(f"Successfully generated {len(formatted_contents)} contents")
