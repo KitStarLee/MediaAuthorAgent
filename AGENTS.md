@@ -1,45 +1,50 @@
 ## 项目概述
-- **名称**: 自媒体内容生产系统
-- **功能**: 数据驱动、自动进化的自媒体内容生产系统，通过分析历史数据持续优化创作策略
+- **名称**: 自媒体内容生产系统（简化版）
+- **功能**: 基于核心主题词批量生成自媒体内容，支持历史数据优化和可配置内容数量
 
 ### 节点清单
 | 节点名 | 文件位置 | 类型 | 功能描述 | 分支逻辑 | 配置文件 |
 |-------|---------|------|---------|---------|---------|
-| feishu_read | `src/graphs/nodes/feishu_read_node.py` | task | 从飞书多维表格B读取历史数据，表结构：标识、平台、内容ID、点赞、收藏、评论、分享 | - | - |
-| should_analyze | `src/graphs/graph.py` | condition | 判断是否需要进行数据分析和优化 | "进行分析"→analysis_optimization, "跳过分析"→topic_generation | - |
-| analysis_optimization | `src/graphs/nodes/analysis_optimization_node.py` | agent | 分析历史数据，生成优化策略 | - | `config/analysis_optimization_llm_cfg.json` |
-| topic_generation | `src/graphs/nodes/topic_generation_node.py` | agent | 根据核心主题生成爆款选题 | - | `config/topic_generation_llm_cfg.json` |
-| content_generation | `src/graphs/nodes/content_generation_node.py` | agent | 基于选题生成完整内容草稿 | - | `config/content_generation_llm_cfg.json` |
-| feishu_write | `src/graphs/nodes/feishu_write_node.py` | task | 将生成内容写入飞书多维表格A，表结构：编码、账户名、标题、描述、话题、文件、发布时间、发布状态、创建时间、数据表现 | - | - |
+| analysis_optimization | `nodes/analysis_optimization_node.py` | agent | 分析历史数据，生成优化策略 | - | `config/analysis_optimization_llm_cfg.json` |
+| topic_generation | `nodes/topic_generation_node.py` | agent | 生成爆款选题 | - | `config/topic_generation_llm_cfg.json` |
+| content_generation | `nodes/content_generation_node.py` | agent | 生成多篇完整内容，包含标题、内容、话题 | - | `config/content_generation_llm_cfg.json` |
 
 **类型说明**: task(task节点) / agent(大模型) / condition(条件分支) / looparray(列表循环) / loopcond(条件循环)
 
-## 工具模块
-| 模块名 | 文件位置 | 功能描述 |
-|-------|---------|---------|
-| feishu_bitable_tool | `src/tools/feishu_bitable_tool.py` | 共享的飞书多维表格操作工具，支持token缓存复用 |
-
 ## 子图清单
-| 子图名 | 文件位置 | 功能描述 | 被调用节点 |
-|-------|---------|------|---------|-----------|
-| 无 | - | - | - |
+无
 
 ## 技能使用
-- 节点`topic_generation`、`content_generation`、`analysis_optimization`使用大语言模型(llm)技能
-- 节点`feishu_read`、`feishu_write`使用飞书多维表格(feishu-base)技能
+- 节点`topic_generation`使用大语言模型技能
+- 节点`content_generation`使用大语言模型技能
+- 节点`analysis_optimization`使用大语言模型技能
 
-## API调用说明
-工作流支持以下参数作为API输入：
-- `core_topic`: 核心主题词（必填）
-- `app_token`: 飞书多维表格的app_token（必填，两个表格共用）
-- `table_id_a`: 飞书表格A的table_id（必填，存储生成内容）
-- `table_id_b`: 飞书表格B的table_id（必填，读取历史数据）
-- `feishu_app_id`: 飞书应用ID（可选，用于自定义认证）
-- `feishu_app_secret`: 飞书应用密钥（可选，用于自定义认证）
-- `enable_analysis`: 是否启用数据分析（可选，默认true）
-- `account_name`: 账户名（可选）
+## API调用示例
+```json
+{
+  "core_topic": "AI短视频创作",
+  "historical_data": null,
+  "content_count": 3
+}
+```
 
-## 优化亮点
-1. **参数精简**：合并app_token_a和app_token_b为单一app_token
-2. **连接复用**：通过`src/tools/feishu_bitable_tool.py`共享飞书客户端，避免重复获取token
-3. **Token缓存**：支持在全局状态中缓存access_token，提高效率
+## 输出格式
+```json
+{
+  "topics": ["选题1", "选题2", "选题3", "选题4", "选题5"],
+  "contents": [
+    {
+      "title": "文章标题",
+      "content": "完整文章内容",
+      "topics": ["#话题1", "#话题2", "#话题3"]
+    }
+  ],
+  "optimization_strategy": {
+    "has_data": false,
+    "message": "暂无历史数据，使用默认创作策略",
+    "good_features": [],
+    "bad_features": [],
+    "suggestions": []
+  }
+}
+```
